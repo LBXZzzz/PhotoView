@@ -29,8 +29,12 @@ class PhotoView : View {
     private lateinit var paint: Paint
     private lateinit var bitmap: Bitmap
 
+    //初始偏移量
     private var originalOffsetX = 0f
     private var originalOffsetY = 0f
+
+    private var offsetX = 0f
+    private var offsetY = 0f
 
     private var smallSale = 0f
     private var bigScale = 0f
@@ -61,6 +65,7 @@ class PhotoView : View {
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        canvas.translate(offsetX, offsetY)
         canvas.scale(currentScale, currentScale, width / 2f, height / 2f)
         canvas.drawBitmap(bitmap, originalOffsetX, originalOffsetY, paint)
     }
@@ -97,6 +102,7 @@ class PhotoView : View {
 
     private fun setCurrentScale(currentScale: Float) {
         this.currentScale = currentScale
+        //刷新
         invalidate()
     }
 
@@ -123,6 +129,11 @@ class PhotoView : View {
 
         /**
          * 相当于MOVE事件
+         *
+         *  e1: MotionEvent?
+         *  e2: MotionEvent
+         *  distanceX: Float  在X轴滑动的距离（单位时间） 旧位置-新位置
+         *  distanceY: Float  Y轴滑动的距离
          */
         override fun onScroll(
             e1: MotionEvent?,
@@ -130,6 +141,12 @@ class PhotoView : View {
             distanceX: Float,
             distanceY: Float
         ): Boolean {
+            //只有在放大情况下才能移动
+            if (isEnlarge) {
+                offsetX -= distanceX
+                offsetY -= distanceY
+                invalidate()
+            }
             return super.onScroll(e1, e2, distanceX, distanceY)
         }
 
