@@ -10,6 +10,7 @@ import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
+import android.widget.OverScroller
 import com.example.photoview.R
 import kotlin.math.max
 import kotlin.math.min
@@ -53,10 +54,17 @@ class PhotoView : View {
     //属性动画
     private var objectAnimator: ObjectAnimator? = null
 
+    //
+    private lateinit var overScroller: OverScroller
+
+    private lateinit var flingRunner: FlingRunner
+
     private fun init(context: Context) {
         bitmap = BitmapFactory.decodeResource(resources, R.drawable.img)
         paint = Paint()
         gestureDetector = GestureDetector(context, PhotoGestureListener())
+        overScroller = OverScroller(context)
+        flingRunner = FlingRunner()
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
@@ -100,7 +108,7 @@ class PhotoView : View {
             objectAnimator = ObjectAnimator.ofFloat(this, "currentScale", 0f)
         }
         //属性动画的变化区间
-        objectAnimator!!.setFloatValues(smallSale,bigScale)
+        objectAnimator!!.setFloatValues(smallSale, bigScale)
         return objectAnimator!!
     }
 
@@ -110,9 +118,9 @@ class PhotoView : View {
         invalidate()
     }
 
-    private fun fixOffsets(){
-        offsetX = min(offsetX, (bitmap.width * bigScale- width) / 2f)
-        offsetX = max(offsetX, -(bitmap.width *bigScale - width) / 2f)
+    private fun fixOffsets() {
+        offsetX = min(offsetX, (bitmap.width * bigScale - width) / 2f)
+        offsetX = max(offsetX, -(bitmap.width * bigScale - width) / 2f)
         offsetY = min(offsetY, (bitmap.height * bigScale - height) / 2f)
         offsetY = max(offsetY, -(bitmap.height * bigScale - height) / 2f)
     }
@@ -155,7 +163,7 @@ class PhotoView : View {
             //只有在放大情况下才能移动
             if (isEnlarge) {
                 offsetX -= distanceX / currentScale
-                offsetY -= distanceY/currentScale
+                offsetY -= distanceY / currentScale
                 fixOffsets()
                 invalidate()
             }
@@ -179,6 +187,23 @@ class PhotoView : View {
             velocityX: Float,
             velocityY: Float
         ): Boolean {
+            //抛掷也是要在放大情况下去抛
+            if (isEnlarge) {
+                overScroller.fling(
+                    offsetX.toInt(),
+                    offsetY.toInt(),
+                    velocityX.toInt(),
+                    velocityY.toInt(),
+                    (-(bitmap.width * bigScale - width) / 2).toInt(),
+                    ((bitmap.width * bigScale - width) / 2).toInt(),
+                    (-(bitmap.height * bigScale - height) / 2).toInt(),
+                    ((bitmap.height * bigScale - height) / 2).toInt(),
+                    300,
+                    300
+                )
+                //每帧动画执行一次
+                postOnAnimation(flingRunner)
+            }
             return super.onFling(e1, e2, velocityX, velocityY)
         }
 
@@ -194,15 +219,15 @@ class PhotoView : View {
          */
         override fun onDoubleTap(e: MotionEvent): Boolean {
             isEnlarge = !isEnlarge
-           /* currentScale = if (isEnlarge) {
-                bigScale
-            } else {
-                smallSale;
-            }*/
+            /* currentScale = if (isEnlarge) {
+                 bigScale
+             } else {
+                 smallSale;
+             }*/
 
             if (isEnlarge) {
                 //启动属性动画，由大变小
-               getObjectAnimator().start()
+                getObjectAnimator().start()
             } else {
                 getObjectAnimator().reverse()
             }
@@ -216,6 +241,18 @@ class PhotoView : View {
          */
         override fun onDoubleTapEvent(e: MotionEvent): Boolean {
             return super.onDoubleTapEvent(e)
+        }
+    }
+
+    inner class FlingRunner : Runnable {
+        override fun run() {
+            //判断动画是否还在执行，还在执行返回ture
+            if (overScroller.computeScrollOffset()) {
+                offsetX = overScroller.currX.toFloat()
+                offsetY = overScroller.currY.toFloat()
+                invalidate()
+                postOnAnimation(this)
+            }
         }
     }
 }
