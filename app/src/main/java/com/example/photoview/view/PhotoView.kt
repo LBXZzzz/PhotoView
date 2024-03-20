@@ -11,6 +11,8 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import com.example.photoview.R
+import kotlin.math.max
+import kotlin.math.min
 
 class PhotoView : View {
     constructor(context: Context) : super(context) {
@@ -40,7 +42,7 @@ class PhotoView : View {
     private var bigScale = 0f
     private var currentScale = 0f
 
-    private val OVER_SCALE_FACTOR = 1
+    private val OVER_SCALE_FACTOR = 1f
 
     //是否已经放大
     private var isEnlarge = false
@@ -88,7 +90,9 @@ class PhotoView : View {
             smallSale = height / bitmap.height.toFloat()
             bigScale = width / bitmap.width.toFloat() * OVER_SCALE_FACTOR
         }
+
         currentScale = smallSale
+
     }
 
     private fun getObjectAnimator(): ObjectAnimator {
@@ -104,6 +108,13 @@ class PhotoView : View {
         this.currentScale = currentScale
         //刷新
         invalidate()
+    }
+
+    private fun fixOffsets(){
+        offsetX = min(offsetX, (bitmap.width * bigScale- width) / 2f)
+        offsetX = max(offsetX, -(bitmap.width *bigScale - width) / 2f)
+        offsetY = min(offsetY, (bitmap.height * bigScale - height) / 2f)
+        offsetY = max(offsetY, -(bitmap.height * bigScale - height) / 2f)
     }
 
     inner class PhotoGestureListener : GestureDetector.SimpleOnGestureListener() {
@@ -143,8 +154,9 @@ class PhotoView : View {
         ): Boolean {
             //只有在放大情况下才能移动
             if (isEnlarge) {
-                offsetX -= distanceX
-                offsetY -= distanceY
+                offsetX -= distanceX / currentScale
+                offsetY -= distanceY/currentScale
+                fixOffsets()
                 invalidate()
             }
             return super.onScroll(e1, e2, distanceX, distanceY)
