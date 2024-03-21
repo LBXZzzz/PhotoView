@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.widget.OverScroller
 import com.example.photoview.R
@@ -59,18 +60,25 @@ class PhotoView : View {
 
     private lateinit var flingRunner: FlingRunner
 
+    private lateinit var photoScaleGestureListener: PhotoScaleGestureListener
+    private lateinit var scaleGestureDetector: ScaleGestureDetector
+
     private fun init(context: Context) {
         bitmap = BitmapFactory.decodeResource(resources, R.drawable.img)
         paint = Paint()
         gestureDetector = GestureDetector(context, PhotoGestureListener())
         overScroller = OverScroller(context)
         flingRunner = FlingRunner()
+        photoScaleGestureListener = PhotoScaleGestureListener()
+        scaleGestureDetector = ScaleGestureDetector(context, photoScaleGestureListener)
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        return event?.let {
-            gestureDetector?.onTouchEvent(it) ?: super.onTouchEvent(it)
-        } ?: super.onTouchEvent(event)
+        var result: Boolean = scaleGestureDetector.onTouchEvent(event!!)
+        if (!scaleGestureDetector.isInProgress) {
+            result = gestureDetector!!.onTouchEvent(event)
+        }
+        return result
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -198,8 +206,8 @@ class PhotoView : View {
                     ((bitmap.width * bigScale - width) / 2).toInt(),
                     (-(bitmap.height * bigScale - height) / 2).toInt(),
                     ((bitmap.height * bigScale - height) / 2).toInt(),
-                    300,
-                    300
+                    150,
+                    150
                 )
                 //每帧动画执行一次
                 postOnAnimation(flingRunner)
@@ -253,6 +261,30 @@ class PhotoView : View {
                 invalidate()
                 postOnAnimation(this)
             }
+        }
+    }
+
+    inner class PhotoScaleGestureListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+
+        private var initialScale = 0f
+
+        //缩放
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            currentScale = initialScale * detector.scaleFactor
+            invalidate()
+            return super.onScale(detector)
+        }
+
+        //返回true,消费事件
+        //缩放前
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            initialScale = currentScale
+            return true
+        }
+
+        //缩放后
+        override fun onScaleEnd(detector: ScaleGestureDetector) {
+            super.onScaleEnd(detector)
         }
     }
 }
